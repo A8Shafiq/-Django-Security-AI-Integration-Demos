@@ -4,6 +4,16 @@ A comprehensive laboratory project designed to demonstrate common web security v
 
 ---
 
+## 📸 Interface Samples
+
+### Home Dashboard
+![Home Dashboard](screenshots/homepage.png)
+
+### AI Integration Lab
+![AI Demo](screenshots/chatgpt_demo.png)
+
+---
+
 ## 🚀 Features
 
 ### 1. 🔐 Security Demos
