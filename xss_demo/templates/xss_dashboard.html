@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XSS Demo — Dashboard</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ── Warning Banner ── */
+        .banner {
+            background: linear-gradient(135deg, #e65100, #bf360c);
+            color: #fff;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 32px;
+            margin-bottom: 10px;
+            color: #fff;
+        }
+        .subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 40px;
+            font-size: 15px;
+        }
+
+        /* ── Navigation ── */
+        .nav-bar {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-bar a {
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 14px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-bar a:hover { color: #fff; }
+
+        /* ── Cards Grid ── */
+        .cards {
+            display: flex;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            flex: 1;
+            min-width: 300px;
+            max-width: 340px;
+            border-radius: 14px;
+            padding: 30px;
+            background: #1a1a2e;
+            transition: transform 0.2s, box-shadow 0.2s;
+            text-decoration: none;
+            color: #e0e0e0;
+            display: block;
+        }
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+        }
+
+        .card-stored { border: 2px solid #e74c3c; }
+        .card-stored .card-icon { color: #e74c3c; }
+        .card-stored:hover { border-color: #ff6b6b; }
+
+        .card-reflected { border: 2px solid #e67e22; }
+        .card-reflected .card-icon { color: #e67e22; }
+        .card-reflected:hover { border-color: #f39c12; }
+
+        .card-dom { border: 2px solid #9b59b6; }
+        .card-dom .card-icon { color: #9b59b6; }
+        .card-dom:hover { border-color: #bb6bd9; }
+
+        .card-icon {
+            font-size: 42px;
+            margin-bottom: 16px;
+        }
+        .card h2 {
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+        .card p {
+            font-size: 13px;
+            color: #999;
+            line-height: 1.6;
+        }
+        .card .tag {
+            display: inline-block;
+            margin-top: 14px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .tag-high { background: rgba(231,76,60,0.2); color: #e74c3c; }
+        .tag-medium { background: rgba(230,126,34,0.2); color: #e67e22; }
+        .tag-client { background: rgba(155,89,182,0.2); color: #9b59b6; }
+
+        /* ── Info Section ── */
+        .info {
+            max-width: 1100px;
+            margin: 40px auto 0;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 28px;
+        }
+        .info h3 { color: #f39c12; margin-bottom: 16px; font-size: 18px; }
+        .info table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .info th, .info td {
+            padding: 10px 14px;
+            text-align: left;
+            border-bottom: 1px solid #2a2a3e;
+            font-size: 13px;
+        }
+        .info th {
+            color: #aaa;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+        .info code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Warning Banner -->
+    <div class="banner">
+        ⚠️ EDUCATIONAL DEMO ONLY — For Cybersecurity Training Purposes ⚠️
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+        <a href="/">🏠 Home</a>
+        <a href="/sqli/">🗄️ SQLi Demo</a>
+        <a href="/xss/" style="color:#fff; font-weight:bold;">⚡ XSS Demo</a>
+    </div>
+
+    <h1>⚡ Cross-Site Scripting (XSS) Demo</h1>
+    <p class="subtitle">Learn how XSS attacks work and how to prevent them — 3 types demonstrated</p>
+
+    <!-- Cards -->
+    <div class="cards">
+
+        <a href="/xss/stored/vulnerable/" class="card card-stored">
+            <div class="card-icon">💾</div>
+            <h2>Stored XSS</h2>
+            <p>
+                Malicious script is <strong>permanently stored</strong> in the database
+                (e.g., in a comment). Every visitor who views the page gets attacked.
+                The most dangerous type.
+            </p>
+            <span class="tag tag-high">HIGH SEVERITY</span>
+        </a>
+
+        <a href="/xss/reflected/vulnerable/" class="card card-reflected">
+            <div class="card-icon">🔄</div>
+            <h2>Reflected XSS</h2>
+            <p>
+                Malicious script is <strong>reflected from a URL parameter</strong>
+                (e.g., a search query). Victim must click a crafted link.
+                Most common XSS type.
+            </p>
+            <span class="tag tag-medium">MEDIUM SEVERITY</span>
+        </a>
+
+        <a href="/xss/dom/" class="card card-dom">
+            <div class="card-icon">🌐</div>
+            <h2>DOM-based XSS</h2>
+            <p>
+                Malicious script is injected <strong>entirely client-side</strong>
+                via JavaScript (e.g., reading from URL hash). No server involvement.
+            </p>
+            <span class="tag tag-client">CLIENT-SIDE</span>
+        </a>
+
+    </div>
+
+    <!-- Info Table -->
+    <div class="info">
+        <h3>📊 XSS Types Comparison</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Stored XSS</th>
+                    <th>Reflected XSS</th>
+                    <th>DOM-based XSS</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Attack Persistence</td>
+                    <td>Permanent (in database)</td>
+                    <td>One-time (via URL)</td>
+                    <td>One-time (via URL hash)</td>
+                </tr>
+                <tr>
+                    <td>Server Involved?</td>
+                    <td>Yes (stores & serves payload)</td>
+                    <td>Yes (reflects payload)</td>
+                    <td>No (client-side only)</td>
+                </tr>
+                <tr>
+                    <td>Attack Vector</td>
+                    <td>Form input → DB → all visitors</td>
+                    <td>Malicious URL → victim clicks</td>
+                    <td>URL fragment → JS reads & injects</td>
+                </tr>
+                <tr>
+                    <td>Example Payload</td>
+                    <td><code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code></td>
+                    <td><code>?q=&lt;script&gt;alert(1)&lt;/script&gt;</code></td>
+                    <td><code>#&lt;img src=x onerror=alert(1)&gt;</code></td>
+                </tr>
+                <tr>
+                    <td>Mitigation</td>
+                    <td>Output encoding, CSP</td>
+                    <td>Output encoding, input validation</td>
+                    <td><code>textContent</code> instead of <code>innerHTML</code></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+</html>

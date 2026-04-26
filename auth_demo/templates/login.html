@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SQL Injection Demo — Educational</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        /* ── Warning Banner ── */
+        .banner {
+            background: linear-gradient(135deg, #ff6b35, #d32f2f);
+            color: #fff;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 30px;
+            color: #fff;
+        }
+
+        /* ── Navigation ── */
+        .nav-bar {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .nav-bar a {
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 14px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-bar a:hover { color: #fff; }
+
+        /* ── Layout: two cards side by side ── */
+        .container {
+            display: flex;
+            gap: 30px;
+            max-width: 1000px;
+            margin: 0 auto;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            flex: 1;
+            min-width: 380px;
+            max-width: 480px;
+            border-radius: 12px;
+            padding: 28px;
+        }
+
+        /* ── Vulnerable Card (Red) ── */
+        .card-vuln {
+            background: #1a1a2e;
+            border: 2px solid #e74c3c;
+        }
+        .card-vuln h2 {
+            color: #e74c3c;
+            margin-bottom: 6px;
+        }
+
+        /* ── Secure Card (Green) ── */
+        .card-safe {
+            background: #1a1a2e;
+            border: 2px solid #2ecc71;
+        }
+        .card-safe h2 {
+            color: #2ecc71;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #888;
+            margin-bottom: 20px;
+        }
+
+        /* ── Form Styles ── */
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #666;
+        }
+
+        /* Buttons */
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-success { background: #2ecc71; color: #fff; }
+
+        /* ── Result Box ── */
+        .result-box {
+            margin-top: 18px;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.6;
+            word-break: break-all;
+        }
+        .result-bypassed { background: #3b1515; border: 1px solid #e74c3c; }
+        .result-success   { background: #153b1a; border: 1px solid #2ecc71; }
+        .result-failed    { background: #1a1a2e; border: 1px solid #555; }
+        .result-error     { background: #3b2e15; border: 1px solid #e67e22; }
+
+        .query-display {
+            background: #111;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 8px;
+            overflow-x: auto;
+        }
+
+        /* ── Tips Section ── */
+        .tips {
+            max-width: 1000px;
+            margin: 40px auto 0;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .tips h3 { color: #f39c12; margin-bottom: 12px; }
+        .tips code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 13px;
+        }
+        .tips li { margin-bottom: 8px; line-height: 1.5; }
+    </style>
+</head>
+<body>
+
+    <!-- Warning Banner -->
+    <div class="banner">
+        ⚠️ EDUCATIONAL DEMO ONLY — For Cybersecurity Training Purposes ⚠️
+    </div>
+
+    <!-- Navigation -->
+    <div class="nav-bar">
+        <a href="/">🏠 Home</a>
+        <a href="/sqli/" style="color:#fff; font-weight:bold;">🗄️ SQLi Demo</a>
+        <a href="/xss/">⚡ XSS Demo</a>
+    </div>
+
+    <h1>🛡️ SQL Injection Demo</h1>
+
+    <!-- Two cards side by side -->
+    <div class="container">
+
+        <!-- ════════════════════════════════════ -->
+        <!--  VULNERABLE LOGIN (Red Card)         -->
+        <!-- ════════════════════════════════════ -->
+        <div class="card card-vuln">
+            <h2>🔴 Vulnerable Login</h2>
+            <p class="subtitle">Uses string concatenation — susceptible to SQL Injection</p>
+
+            <form method="POST" action="/sqli/vulnerable-login/">
+                {% csrf_token %}
+                <label for="vuln-user">Username</label>
+                <input type="text" id="vuln-user" name="username" placeholder="e.g. admin" value="{{ vuln_username|default:'' }}">
+
+                <label for="vuln-pass">Password</label>
+                <input type="text" id="vuln-pass" name="password" placeholder="e.g. ' OR '1'='1" value="{{ vuln_password|default:'' }}">
+
+                <button type="submit" class="btn btn-danger">Login (Vulnerable)</button>
+            </form>
+
+            <!-- Result -->
+            {% if vuln_result %}
+            <div class="result-box {% if vuln_status == 'bypassed' %}result-bypassed{% elif vuln_status == 'success' %}result-success{% else %}result-failed{% endif %}">
+                <strong>Result:</strong> {{ vuln_result }}
+                <br><strong>Rows returned:</strong> {{ vuln_rows }}
+                {% if vuln_query %}
+                <div class="query-display">{{ vuln_query }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if vuln_error %}
+            <div class="result-box result-error">
+                <strong>Error:</strong> {{ vuln_error }}
+                {% if vuln_query %}
+                <div class="query-display">{{ vuln_query }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- ════════════════════════════════════ -->
+        <!--  SECURE LOGIN (Green Card)           -->
+        <!-- ════════════════════════════════════ -->
+        <div class="card card-safe">
+            <h2>🟢 Secure Login</h2>
+            <p class="subtitle">Uses Django ORM (parameterized queries) — safe from injection</p>
+
+            <form method="POST" action="/sqli/secure-login/">
+                {% csrf_token %}
+                <label for="sec-user">Username</label>
+                <input type="text" id="sec-user" name="username" placeholder="e.g. admin" value="{{ sec_username|default:'' }}">
+                <input type="text" id="sec-user" name="username" placeholder="e.g. admin" value="{{ sec_username|default:'' }}">
+
+                <label for="sec-pass">Password</label>
+                <input type="text" id="sec-pass" name="password" placeholder="e.g. ' OR '1'='1" value="{{ sec_password|default:'' }}">
+
+                <button type="submit" class="btn btn-success">Login (Secure)</button>
+            </form>
+
+            <!-- Result -->
+            {% if sec_result %}
+            <div class="result-box {% if sec_status == 'success' %}result-success{% else %}result-failed{% endif %}">
+                <strong>Result:</strong> {{ sec_result }}
+                {% if sec_query %}
+                <div class="query-display">{{ sec_query }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+
+            {% if sec_error %}
+            <div class="result-box result-error">
+                <strong>Error:</strong> {{ sec_error }}
+                {% if sec_query %}
+                <div class="query-display">{{ sec_query }}</div>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- ════════════════════════════════════ -->
+    <!--  TIPS SECTION                        -->
+    <!-- ════════════════════════════════════ -->
+    <div class="tips">
+        <h3>💡 Try These Payloads</h3>
+        <ul>
+            <li><strong>Normal login:</strong> username = <code>admin</code> , password = <code>admin123</code></li>
+            <li><strong>SQL Injection #1:</strong> username = <code>admin</code> , password = <code>' OR '1'='1</code></li>
+            <li><strong>SQL Injection #2:</strong> username = <code>' OR '1'='1' --</code> , password = <code>anything</code></li>
+            <li><strong>SQL Injection #3:</strong> username = <code>admin</code> , password = <code>' OR 1=1 --</code></li>
+        </ul>
+        <p style="margin-top: 12px; color: #888;">
+            Watch the <strong>terminal</strong> for detailed step-by-step query logs after each attempt.
+        </p>
+    </div>
+
+</body>
+</html>

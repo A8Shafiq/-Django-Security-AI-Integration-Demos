@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Mitigations Reference</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a; color: #e0e0e0;
+            min-height: 100vh; padding: 40px 20px;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #888; text-decoration: none; font-size: 14px;
+            margin-bottom: 30px; transition: color .2s;
+        }
+        .back-link:hover { color: #9b59b6; }
+
+        h1 { font-size: 32px; color: #fff; margin-bottom: 10px; }
+        .subtitle { color: #aaa; font-size: 15px; line-height: 1.6; margin-bottom: 40px; max-width: 750px; }
+
+        /* TOC */
+        .toc {
+            background: #1a1a2e; border: 1px solid #333; border-radius: 10px;
+            padding: 22px 28px; margin-bottom: 40px;
+        }
+        .toc h3 { color: #9b59b6; font-size: 16px; margin-bottom: 12px; }
+        .toc ul { list-style: none; padding: 0; columns: 2; }
+        .toc li { padding: 4px 0; }
+        .toc a { color: #aaa; text-decoration: none; font-size: 14px; transition: color .2s; }
+        .toc a:hover { color: #9b59b6; }
+
+        /* Section */
+        .section {
+            background: #1a1a2e; border: 1px solid #333; border-radius: 12px;
+            padding: 30px; margin-bottom: 24px;
+        }
+        .section-header {
+            display: flex; align-items: center; gap: 12px;
+            margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid #2a2a3e;
+        }
+        .section-icon { font-size: 28px; }
+        .section-header h2 { font-size: 22px; color: #fff; }
+
+        /* Mitigation card */
+        .mit-card {
+            background: #141425; border: 1px solid #2a2a3e; border-radius: 8px;
+            padding: 20px; margin-bottom: 14px;
+            border-left: 3px solid #9b59b6;
+        }
+        .mit-card h4 {
+            color: #fff; font-size: 15px; margin-bottom: 8px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .mit-card h4 .badge {
+            font-size: 10px; padding: 2px 8px; border-radius: 3px;
+            font-weight: 700; letter-spacing: .5px;
+        }
+        .badge-critical { background: #e74c3c; color: #fff; }
+        .badge-high { background: #e67e22; color: #fff; }
+        .badge-medium { background: #f1c40f; color: #333; }
+        .mit-card p { color: #aaa; font-size: 13px; line-height: 1.7; margin-bottom: 10px; }
+        .mit-card .why {
+            background: rgba(155,89,182,.08); border: 1px solid rgba(155,89,182,.2);
+            border-radius: 6px; padding: 10px 14px; margin-bottom: 10px;
+        }
+        .mit-card .why strong { color: #9b59b6; font-size: 12px; }
+        .mit-card .why p { margin: 0; color: #bbb; font-size: 12px; }
+
+        /* Code block */
+        .code-block {
+            background: #0d0d18; border: 1px solid #2a2a3e; border-radius: 6px;
+            padding: 14px 18px; font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px; color: #2ecc71; overflow-x: auto;
+            line-height: 1.6; white-space: pre;
+        }
+        .code-label {
+            color: #666; font-size: 11px; margin-bottom: 4px; font-weight: 600;
+        }
+        .code-bad { color: #e74c3c; }
+        .code-good { color: #2ecc71; }
+
+        /* OWASP link */
+        .owasp {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #9b59b6; text-decoration: none; font-size: 12px;
+            margin-top: 8px; transition: color .2s;
+        }
+        .owasp:hover { color: #8e44ad; }
+
+        @media (max-width: 600px) {
+            .toc ul { columns: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link">← Back to All Labs</a>
+
+        <h1>🔒 Security Mitigations Reference</h1>
+        <p class="subtitle">
+            Comprehensive guide to defending against common web vulnerabilities.
+            Each mitigation explains <strong>what</strong> to do, <strong>why</strong> it works,
+            and shows <strong>vulnerable vs. secure code</strong> side by side.
+        </p>
+
+        <!-- Table of Contents -->
+        <div class="toc">
+            <h3>📑 Contents</h3>
+            <ul>
+                <li><a href="#sqli">1. SQL Injection (SQLi)</a></li>
+                <li><a href="#xss">2. Cross-Site Scripting (XSS)</a></li>
+                <li><a href="#upload">3. File Upload Attacks</a></li>
+                <li><a href="#general">4. General Best Practices</a></li>
+            </ul>
+        </div>
+
+        <!-- ==================== SQL INJECTION ==================== -->
+        <div class="section" id="sqli">
+            <div class="section-header">
+                <span class="section-icon">🗄️</span>
+                <h2>SQL Injection Mitigations</h2>
+            </div>
+
+            <div class="mit-card">
+                <h4>Parameterized Queries (Prepared Statements) <span class="badge badge-critical">CRITICAL</span></h4>
+                <p>Never concatenate user input into SQL strings. Use parameterized queries where the database engine treats inputs as data, never as executable code.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>The database separates the query structure from the data. Even if the input contains <code>' OR 1=1 --</code>, it's treated as a literal string value, not SQL syntax.</p>
+                </div>
+                <p class="code-label">❌ Vulnerable (string concatenation):</p>
+                <div class="code-block code-bad">cursor.execute("SELECT * FROM users WHERE username = '" + username + "'")</div>
+                <p class="code-label" style="margin-top:10px;">✅ Secure (parameterized):</p>
+                <div class="code-block code-good">cursor.execute("SELECT * FROM users WHERE username = %s", [username])</div>
+                <a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank" class="owasp">📖 OWASP SQL Injection Prevention →</a>
+            </div>
+
+            <div class="mit-card">
+                <h4>Use an ORM (Object-Relational Mapping) <span class="badge badge-high">HIGH</span></h4>
+                <p>Use Django ORM, SQLAlchemy, or similar frameworks that automatically build parameterized queries. Avoid <code>raw()</code> and <code>extra()</code> unless absolutely necessary.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>ORMs abstract away raw SQL entirely. <code>User.objects.filter(username=input)</code> always generates a safe parameterized query internally.</p>
+                </div>
+                <p class="code-label">✅ Secure (Django ORM):</p>
+                <div class="code-block code-good">user = User.objects.filter(username=username).first()</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Input Validation &amp; Whitelisting <span class="badge badge-medium">MEDIUM</span></h4>
+                <p>Validate that inputs conform to expected formats (e.g., alphanumeric usernames, numeric IDs). Reject unexpected characters at the application layer.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Defense-in-depth: even if parameterization is missed somewhere, validation reduces the attack surface by stripping SQL metacharacters.</p>
+                </div>
+                <p class="code-label">✅ Example validation:</p>
+                <div class="code-block code-good">import re
+if not re.match(r'^[a-zA-Z0-9_]{3,30}$', username):
+    raise ValidationError("Invalid username format")</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Principle of Least Privilege <span class="badge badge-medium">MEDIUM</span></h4>
+                <p>Database accounts used by the application should have minimal permissions. A login form only needs SELECT on the users table — not DROP, ALTER, or access to other tables.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Even if injection succeeds, the damage is limited. An attacker can't <code>DROP TABLE</code> if the DB user doesn't have that permission.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== XSS ==================== -->
+        <div class="section" id="xss">
+            <div class="section-header">
+                <span class="section-icon">⚡</span>
+                <h2>Cross-Site Scripting (XSS) Mitigations</h2>
+            </div>
+
+            <div class="mit-card">
+                <h4>Output Encoding / Auto-Escaping <span class="badge badge-critical">CRITICAL</span></h4>
+                <p>Always escape user-generated content before rendering it in HTML. Django's template engine auto-escapes by default — never use the <code>|safe</code> filter on untrusted data.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Escaping converts <code>&lt;script&gt;</code> to <code>&amp;lt;script&amp;gt;</code>. The browser renders it as visible text instead of executing it as code.</p>
+                </div>
+                <p class="code-label">❌ Vulnerable (|safe filter):</p>
+                <div class="code-block code-bad">{{ "{{ comment.text|safe }}" }}</div>
+                <p class="code-label" style="margin-top:10px;">✅ Secure (auto-escaped):</p>
+                <div class="code-block code-good">{{ "{{ comment.text }}" }}  {# Django auto-escapes this #}</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Content Security Policy (CSP) <span class="badge badge-high">HIGH</span></h4>
+                <p>Set CSP headers to restrict which scripts can execute. A strict CSP prevents inline scripts and only allows scripts from trusted origins.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Even if an attacker injects <code>&lt;script&gt;alert(1)&lt;/script&gt;</code>, the browser refuses to execute inline scripts when CSP disallows them.</p>
+                </div>
+                <p class="code-label">✅ Example CSP header:</p>
+                <div class="code-block code-good">Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>HttpOnly &amp; Secure Cookie Flags <span class="badge badge-high">HIGH</span></h4>
+                <p>Set cookies (especially session cookies) with <code>HttpOnly</code> and <code>Secure</code> flags. This prevents JavaScript from accessing them.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p><code>HttpOnly</code> makes <code>document.cookie</code> return empty for that cookie. Even successful XSS can't steal session tokens.</p>
+                </div>
+                <p class="code-label">✅ Django settings:</p>
+                <div class="code-block code-good">SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_HTTPONLY = True</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>DOM-Safe APIs <span class="badge badge-high">HIGH</span></h4>
+                <p>In JavaScript, use <code>textContent</code> instead of <code>innerHTML</code>. Never pass user input to <code>eval()</code>, <code>setTimeout(string)</code>, or <code>document.write()</code>.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p><code>textContent</code> treats everything as plain text — HTML tags are not parsed or executed by the browser.</p>
+                </div>
+                <p class="code-label">❌ Vulnerable:</p>
+                <div class="code-block code-bad">element.innerHTML = userInput;  // Parses HTML, executes scripts</div>
+                <p class="code-label" style="margin-top:10px;">✅ Secure:</p>
+                <div class="code-block code-good">element.textContent = userInput;  // Plain text only</div>
+            </div>
+        </div>
+
+        <!-- ==================== FILE UPLOAD ==================== -->
+        <div class="section" id="upload">
+            <div class="section-header">
+                <span class="section-icon">📁</span>
+                <h2>File Upload Mitigations</h2>
+            </div>
+
+            <div class="mit-card">
+                <h4>Extension Whitelist <span class="badge badge-critical">CRITICAL</span></h4>
+                <p>Only allow specific, known-safe file extensions. Use a strict whitelist — never a blacklist (attackers always find extensions you didn't think of).</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Blocking <code>.php</code> is a blacklist — attacker tries <code>.phtml</code>, <code>.php5</code>, <code>.phar</code>. Allowing only <code>.jpg, .png, .pdf</code> is a whitelist — attacker has no bypass.</p>
+                </div>
+                <p class="code-label">✅ Example:</p>
+                <div class="code-block code-good">ALLOWED = {'.jpg', '.jpeg', '.png', '.gif', '.pdf'}
+ext = os.path.splitext(filename)[1].lower()
+if ext not in ALLOWED:
+    raise ValidationError("File type not allowed")</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>MIME Type + Magic Bytes Validation <span class="badge badge-high">HIGH</span></h4>
+                <p>Check both the Content-Type header AND the file's actual content (magic bytes / file signature). The python-magic library can detect the real file type regardless of extension.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>MIME headers can be spoofed, but magic bytes are embedded in the file's binary data. A PHP script pretending to be JPEG won't have the <code>FF D8 FF</code> JPEG signature.</p>
+                </div>
+                <p class="code-label">✅ Example with python-magic:</p>
+                <div class="code-block code-good">import magic
+mime = magic.from_buffer(file.read(2048), mime=True)
+if mime not in {'image/jpeg', 'image/png', 'application/pdf'}:
+    raise ValidationError(f"Invalid file content: {mime}")</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>File Size Limits <span class="badge badge-high">HIGH</span></h4>
+                <p>Enforce maximum file size at both the application level and the web server level (nginx/Apache). This prevents disk exhaustion and zip-bomb attacks.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Limiting to e.g. 2 MB makes DoS impractical — attacker would need millions of requests to fill the disk, and rate limiting stops that too.</p>
+                </div>
+                <p class="code-label">✅ Django settings:</p>
+                <div class="code-block code-good"># settings.py
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024  # 2 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Rename Files on Upload <span class="badge badge-high">HIGH</span></h4>
+                <p>Never use the original filename. Generate a random name (UUID) and keep the whitelisted extension. Store the original name in the database if needed for display.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Eliminates path traversal (<code>../../etc/passwd</code>), prevents file overwrites, and stops information leakage from predictable filenames.</p>
+                </div>
+                <p class="code-label">✅ Example:</p>
+                <div class="code-block code-good">import uuid, os
+safe_name = f"{uuid.uuid4().hex}{ext}"
+save_path = os.path.join(UPLOAD_DIR, safe_name)</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Store Outside Web Root <span class="badge badge-critical">CRITICAL</span></h4>
+                <p>Never store uploaded files in a directory served directly by the web server. Use a separate storage location and serve files through an application-controlled endpoint with proper access checks.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>If a PHP file is stored outside the web root, Apache/Nginx won't process it as PHP when accessed via URL — it's just data, not executable.</p>
+                </div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Antivirus / Content Scanning <span class="badge badge-medium">MEDIUM</span></h4>
+                <p>Scan uploaded files with ClamAV or similar tools before accepting them. This catches known malware, trojans, and malicious scripts embedded in files.</p>
+                <div class="why">
+                    <strong>Why it works:</strong>
+                    <p>Signature-based detection catches known threats. Combined with other mitigations, it provides an additional defense layer against zero-day exploits.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ==================== GENERAL ==================== -->
+        <div class="section" id="general">
+            <div class="section-header">
+                <span class="section-icon">🛡️</span>
+                <h2>General Security Best Practices</h2>
+            </div>
+
+            <div class="mit-card">
+                <h4>Defense in Depth</h4>
+                <p>Never rely on a single security measure. Layer multiple controls so that if one fails, others still protect the application. For example, combine input validation + parameterized queries + least-privilege database accounts for SQL injection defense.</p>
+            </div>
+
+            <div class="mit-card">
+                <h4>Security Headers</h4>
+                <p>Set HTTP security headers on all responses to protect against common attacks:</p>
+                <div class="code-block code-good" style="margin-top:10px;">X-Content-Type-Options: nosniff        # Prevents MIME-type sniffing
+X-Frame-Options: DENY                   # Prevents clickjacking
+X-XSS-Protection: 1; mode=block         # Legacy XSS filter
+Strict-Transport-Security: max-age=...  # Forces HTTPS
+Referrer-Policy: strict-origin           # Controls referer leakage</div>
+            </div>
+
+            <div class="mit-card">
+                <h4>Keep Dependencies Updated</h4>
+                <p>Regularly update frameworks, libraries, and server software. Use tools like <code>pip-audit</code>, <code>npm audit</code>, or <code>Snyk</code> to scan for known vulnerabilities in dependencies.</p>
+            </div>
+
+            <div class="mit-card">
+                <h4>Logging &amp; Monitoring</h4>
+                <p>Log all authentication attempts, file uploads, and unusual queries. Set up alerts for patterns like repeated failed logins, SQLi payloads in logs, or large file uploads. Use a SIEM (Security Information and Event Management) in production.</p>
+            </div>
+
+            <div class="mit-card">
+                <h4>Web Application Firewall (WAF)</h4>
+                <p>Deploy a WAF (e.g., ModSecurity, AWS WAF, Cloudflare) as an additional layer. WAFs can detect and block common attack patterns before they reach your application code.</p>
+            </div>
+        </div>
+
+        <div style="text-align:center; padding:40px 0 20px; color:#666; font-size: 12px;">
+            For educational purposes only. References: <a href="https://owasp.org/www-project-top-ten/" target="_blank" style="color:#9b59b6;">OWASP Top 10</a>
+        </div>
+    </div>
+</body>
+</html>

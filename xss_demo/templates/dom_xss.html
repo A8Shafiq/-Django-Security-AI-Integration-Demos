@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DOM-based XSS Demo</title>
+    <style>
+        /* ── Reset & Base ── */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .banner {
+            background: linear-gradient(135deg, #e65100, #bf360c);
+            color: #fff;
+            text-align: center;
+            padding: 14px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            letter-spacing: 1px;
+        }
+
+        .nav-bar {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .nav-bar a {
+            color: #aaa;
+            text-decoration: none;
+            margin: 0 14px;
+            font-size: 14px;
+            transition: color 0.2s;
+        }
+        .nav-bar a:hover, .nav-bar a.active { color: #fff; font-weight: bold; }
+
+        h1 {
+            text-align: center;
+            font-size: 28px;
+            margin-bottom: 6px;
+            color: #fff;
+        }
+        .page-subtitle {
+            text-align: center;
+            color: #888;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        /* ── Two Cards Side by Side ── */
+        .cards-container {
+            display: flex;
+            gap: 30px;
+            max-width: 1100px;
+            margin: 0 auto 30px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .card {
+            flex: 1;
+            min-width: 380px;
+            max-width: 520px;
+            border-radius: 12px;
+            padding: 24px;
+            background: #1a1a2e;
+        }
+        .card-vuln { border: 2px solid #e74c3c; }
+        .card-vuln h2 { color: #e74c3c; margin-bottom: 6px; font-size: 18px; }
+        .card-safe { border: 2px solid #2ecc71; }
+        .card-safe h2 { color: #2ecc71; margin-bottom: 6px; font-size: 18px; }
+        .card .card-subtitle { color: #888; font-size: 12px; margin-bottom: 16px; }
+
+        label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 14px;
+            border: 1px solid #333;
+            border-radius: 6px;
+            background: #0f0f1a;
+            color: #e0e0e0;
+            font-size: 14px;
+        }
+        input:focus { outline: none; border-color: #666; }
+
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn-danger { background: #e74c3c; color: #fff; }
+        .btn-success { background: #2ecc71; color: #fff; }
+
+        /* ── Output Box ── */
+        .output-box {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 8px;
+            min-height: 50px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .output-vuln {
+            background: #0f0f1a;
+            border: 1px solid #e74c3c;
+        }
+        .output-safe {
+            background: #0f0f1a;
+            border: 1px solid #2ecc71;
+        }
+
+        .output-label {
+            color: #888;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        /* ── Code Display ── */
+        .code-display {
+            background: #111;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Consolas', 'Courier New', monospace;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 14px;
+            overflow-x: auto;
+            line-height: 1.6;
+        }
+        .code-display .dangerous { color: #e74c3c; }
+        .code-display .safe { color: #2ecc71; }
+
+        /* ── Steps Log ── */
+        .steps-log {
+            margin-top: 14px;
+            background: #111;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 12px;
+            font-family: 'Consolas', monospace;
+            color: #aaa;
+            line-height: 1.7;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .steps-log .step-label { color: #f39c12; font-weight: bold; }
+        .steps-log .step-warn { color: #e74c3c; }
+        .steps-log .step-ok { color: #2ecc71; }
+
+        /* ── Info / How it Works ── */
+        .info-box {
+            max-width: 1100px;
+            margin: 0 auto 24px;
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .info-box h3 { color: #f39c12; margin-bottom: 12px; }
+        .info-box code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e74c3c;
+            font-size: 13px;
+        }
+        .info-box li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+
+        .step-box {
+            background: #111;
+            border-left: 4px solid #9b59b6;
+            padding: 14px;
+            border-radius: 0 8px 8px 0;
+            margin: 12px 0;
+            font-size: 13px;
+            line-height: 1.7;
+        }
+        .step-box .step-num {
+            color: #9b59b6;
+            font-weight: bold;
+        }
+
+        /* ── Mitigation ── */
+        .mitigation {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #0d2818;
+            border: 2px solid #2ecc71;
+            border-radius: 12px;
+            padding: 24px;
+        }
+        .mitigation h3 { color: #2ecc71; margin-bottom: 12px; }
+        .mitigation li { margin-bottom: 8px; line-height: 1.5; font-size: 14px; }
+        .mitigation code {
+            background: #111;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #2ecc71;
+            font-size: 13px;
+        }
+        .mitigation pre {
+            background: #111;
+            padding: 14px;
+            border-radius: 8px;
+            overflow-x: auto;
+            font-size: 12px;
+            color: #f39c12;
+            margin-top: 8px;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="banner">
+        ⚠️ EDUCATIONAL DEMO ONLY — DOM-based XSS Demonstration ⚠️
+    </div>
+
+    <div class="nav-bar">
+        <a href="/xss/">⚡ Dashboard</a>
+        <a href="/xss/stored/vulnerable/">💾 Stored XSS</a>
+        <a href="/xss/reflected/vulnerable/">🔄 Reflected XSS</a>
+        <a href="/xss/dom/" class="active">🌐 DOM XSS</a>
+    </div>
+
+    <h1>🌐 DOM-based XSS (Client-Side)</h1>
+    <p class="page-subtitle">Malicious scripts injected entirely via JavaScript — no server involvement</p>
+
+    <!-- How It Works -->
+    <div class="info-box">
+        <h3>🔍 How DOM-based XSS Works</h3>
+        <div class="step-box">
+            <p><span class="step-num">STEP 1:</span> Attacker crafts a URL with a malicious hash fragment (e.g., <code>#&lt;img src=x onerror=alert('XSS')&gt;</code>)</p>
+            <p><span class="step-num">STEP 2:</span> Victim clicks the link — the hash fragment is NOT sent to the server</p>
+            <p><span class="step-num">STEP 3:</span> JavaScript on the page reads <code>location.hash</code></p>
+            <p><span class="step-num">STEP 4:</span> <strong>VULNERABLE:</strong> <code>innerHTML</code> parses the value as HTML → script executes</p>
+            <p><span class="step-num">STEP 4:</span> <strong>SECURE:</strong> <code>textContent</code> treats it as plain text → no execution</p>
+        </div>
+        <p style="margin-top:12px; font-size:13px; color:#888;">
+            Key difference: The malicious payload <strong>never reaches the server</strong>. It's processed entirely by client-side JavaScript.
+        </p>
+    </div>
+
+    <!-- Side by Side Cards -->
+    <div class="cards-container">
+
+        <!-- VULNERABLE CARD -->
+        <div class="card card-vuln">
+            <h2>🔴 Vulnerable (innerHTML)</h2>
+            <p class="card-subtitle">
+                Uses <code>innerHTML</code> — browser parses and executes HTML/JS
+            </p>
+
+            <label for="vuln-input">Enter HTML/JS Payload</label>
+            <input type="text" id="vuln-input"
+                   placeholder="e.g. <img src=x onerror=alert('XSS')>"
+                   value="<img src=x onerror=alert('DOM XSS!')>">
+
+            <button class="btn btn-danger" onclick="injectVulnerable()">
+                Inject (innerHTML)
+            </button>
+
+            <p class="output-label" style="margin-top:16px;">Output:</p>
+            <div id="vuln-output" class="output-box output-vuln">
+                <!-- Content injected here via innerHTML -->
+            </div>
+
+            <!-- Code -->
+            <div class="code-display">
+                <span class="dangerous">// ❌ DANGEROUS CODE</span><br>
+                var input = document.getElementById('vuln-input').value;<br>
+                <span class="dangerous">element.innerHTML = input;</span><br>
+                <span style="color:#888;">// Browser PARSES HTML → script executes!</span>
+            </div>
+
+            <!-- Steps Log -->
+            <div id="vuln-log" class="steps-log"></div>
+        </div>
+
+        <!-- SECURE CARD -->
+        <div class="card card-safe">
+            <h2>🟢 Secure (textContent)</h2>
+            <p class="card-subtitle">
+                Uses <code>textContent</code> — browser treats everything as plain text
+            </p>
+
+            <label for="safe-input">Enter HTML/JS Payload</label>
+            <input type="text" id="safe-input"
+                   placeholder="e.g. <img src=x onerror=alert('XSS')>"
+                   value="<img src=x onerror=alert('DOM XSS!')>">
+
+            <button class="btn btn-success" onclick="injectSecure()">
+                Inject (textContent)
+            </button>
+
+            <p class="output-label" style="margin-top:16px;">Output:</p>
+            <div id="safe-output" class="output-box output-safe">
+                <!-- Content injected here via textContent -->
+            </div>
+
+            <!-- Code -->
+            <div class="code-display">
+                <span class="safe">// ✅ SAFE CODE</span><br>
+                var input = document.getElementById('safe-input').value;<br>
+                <span class="safe">element.textContent = input;</span><br>
+                <span style="color:#888;">// Browser renders as PLAIN TEXT only</span>
+            </div>
+
+            <!-- Steps Log -->
+            <div id="safe-log" class="steps-log"></div>
+        </div>
+
+    </div>
+
+    <!-- Payload Examples -->
+    <div class="payload-section" style="max-width: 1100px; margin: 0 auto 30px; background: #1a1a2e; border: 1px solid #333; border-radius: 12px; padding: 24px;">
+        <h3 style="color: #f39c12; margin-bottom: 14px; font-size: 16px;">💡 Malicious Payload Examples</h3>
+        <p style="color: #aaa; font-size: 13px; margin-bottom: 16px;">Try pasting these into the input fields above to see how the browser executes them immediately.</p>
+        
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr style="border-bottom: 1px solid #333;">
+                <th style="text-align: left; padding: 10px; color: #888;">Attack Type</th>
+                <th style="text-align: left; padding: 10px; color: #888;">Payload</th>
+                <th style="text-align: left; padding: 10px; color: #888;">Description</th>
+            </tr>
+            <tr style="border-bottom: 1px solid #2a2a3e;">
+                <td style="padding: 10px; font-weight: bold; color: #e74c3c;">SVG Execution</td>
+                <td style="padding: 10px;"><code>&lt;svg onload=alert('XSS_via_SVG')&gt;</code></td>
+                <td style="padding: 10px; color: #aaa;">Executes JavaScript immediately when the SVG element is rendered into the DOM.</td>
+            </tr>
+            <tr>
+                <td style="padding: 10px; font-weight: bold; color: #e67e22;">Iframe Injection</td>
+                <td style="padding: 10px;"><code>&lt;iframe src="javascript:alert('XSS_via_Iframe')"&gt;&lt;/iframe&gt;</code></td>
+                <td style="padding: 10px; color: #aaa;">Creates a new execution context via an iframe that runs the javascript URI.</td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- Also test from URL hash -->
+    <div class="info-box">
+        <h3>🔗 Test via URL Hash</h3>
+        <p style="font-size:14px; line-height:1.6;">
+            DOM-based XSS often uses <code>location.hash</code>. Try adding a hash to the URL:
+        </p>
+        <div class="code-display" style="margin-top:12px;">
+            <span style="color:#e0e0e0;">http://127.0.0.1:8000/xss/dom/<span style="color:#e74c3c;">#&lt;img src=x onerror=alert('XSS')&gt;</span></span>
+        </div>
+        <p style="font-size:13px; color:#888; margin-top:8px;">
+            The page will automatically read the hash and inject it into both panels when loaded.
+        </p>
+        <button class="btn btn-danger" style="margin-top:12px;" onclick="injectFromHash()">
+            🔄 Read Current URL Hash & Inject
+        </button>
+    </div>
+
+    <!-- Mitigation -->
+    <div class="mitigation">
+        <h3>🛡️ Mitigation Techniques for DOM-based XSS</h3>
+        <ul>
+            <li><strong>Use <code>textContent</code> instead of <code>innerHTML</code>:</strong> <code>textContent</code> never parses HTML — it's always safe.</li>
+            <li><strong>Avoid dangerous DOM APIs:</strong> <code>innerHTML</code>, <code>outerHTML</code>, <code>document.write()</code>, <code>eval()</code></li>
+            <li><strong>Sanitize before DOM insertion:</strong> Use DOMPurify library: <code>element.innerHTML = DOMPurify.sanitize(userInput)</code></li>
+            <li><strong>Content Security Policy:</strong> <code>Content-Security-Policy: script-src 'self'</code> blocks inline scripts</li>
+            <li><strong>Input validation in JS:</strong> Validate/sanitize user input before using it in DOM operations</li>
+        </ul>
+        <pre>
+// ❌ DANGEROUS — All of these can execute scripts:
+element.innerHTML = userInput;
+element.outerHTML = userInput;
+document.write(userInput);
+eval(userInput);
+
+// ✅ SAFE — These treat input as plain text:
+element.textContent = userInput;
+element.innerText = userInput;
+element.setAttribute('value', userInput);
+
+// ✅ SANITIZE — Use DOMPurify if you MUST render HTML:
+// &lt;script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"&gt;&lt;/script&gt;
+element.innerHTML = DOMPurify.sanitize(userInput);
+        </pre>
+    </div>
+
+    <!-- ════════════════════════════════════ -->
+    <!--  JAVASCRIPT                          -->
+    <!-- ════════════════════════════════════ -->
+    <script>
+        function timestamp() {
+            return new Date().toLocaleTimeString();
+        }
+
+        function addLog(logId, lines) {
+            var logEl = document.getElementById(logId);
+            lines.forEach(function(line) {
+                logEl.innerHTML += line + '<br>';
+            });
+            logEl.scrollTop = logEl.scrollHeight;
+        }
+
+        // ── VULNERABLE: innerHTML ──
+        function injectVulnerable() {
+            var input = document.getElementById('vuln-input').value;
+            var output = document.getElementById('vuln-output');
+            var logId = 'vuln-log';
+
+            // Clear previous
+            document.getElementById(logId).innerHTML = '';
+
+            addLog(logId, [
+                '<span class="step-label">[' + timestamp() + '] ═══ VULNERABLE innerHTML Injection ═══</span>',
+                '<span class="step-label">[STEP 1]</span> Reading user input from text field',
+                '  Value: ' + input.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+                '',
+                '<span class="step-label">[STEP 2]</span> Injecting into DOM using innerHTML',
+                '  <span class="step-warn">⚠️  element.innerHTML = userInput</span>',
+                '  Browser will PARSE this as HTML and execute any scripts!',
+                ''
+            ]);
+
+            // THIS IS THE VULNERABLE PART
+            output.innerHTML = input;
+
+            var hasScript = input.toLowerCase().indexOf('<script') !== -1 ||
+                           input.toLowerCase().indexOf('onerror') !== -1 ||
+                           input.toLowerCase().indexOf('onload') !== -1;
+
+            if (hasScript) {
+                addLog(logId, [
+                    '<span class="step-warn">[STEP 3] ⚠️ ATTACK SUCCEEDED!</span>',
+                    '  <span class="step-warn">Malicious HTML/JS was parsed and executed</span>',
+                    '  The attacker\'s code ran in the victim\'s browser!',
+                    '  Impact: Cookie theft, session hijacking, keylogging, etc.'
+                ]);
+            } else {
+                addLog(logId, [
+                    '<span class="step-label">[STEP 3]</span> Content injected (no obvious script detected)',
+                    '  But innerHTML still parses ANY HTML tags!'
+                ]);
+            }
+        }
+
+        // ── SECURE: textContent ──
+        function injectSecure() {
+            var input = document.getElementById('safe-input').value;
+            var output = document.getElementById('safe-output');
+            var logId = 'safe-log';
+
+            // Clear previous
+            document.getElementById(logId).innerHTML = '';
+
+            addLog(logId, [
+                '<span class="step-label">[' + timestamp() + '] ═══ SECURE textContent Injection ═══</span>',
+                '<span class="step-label">[STEP 1]</span> Reading user input from text field',
+                '  Value: ' + input.replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+                '',
+                '<span class="step-label">[STEP 2]</span> Injecting into DOM using textContent',
+                '  <span class="step-ok">✅ element.textContent = userInput</span>',
+                '  Browser treats EVERYTHING as plain text, no parsing!',
+                ''
+            ]);
+
+            // THIS IS THE SAFE PART
+            output.textContent = input;
+
+            addLog(logId, [
+                '<span class="step-ok">[STEP 3] ✅ ATTACK BLOCKED!</span>',
+                '  <span class="step-ok">Input rendered as plain text — no HTML parsed</span>',
+                '  Script tags displayed literally, NOT executed',
+                '  The user sees the raw text safely'
+            ]);
+        }
+
+        // ── Inject from URL Hash ──
+        function injectFromHash() {
+            var hash = decodeURIComponent(location.hash.substring(1));
+            if (hash) {
+                document.getElementById('vuln-input').value = hash;
+                document.getElementById('safe-input').value = hash;
+                injectVulnerable();
+                injectSecure();
+            } else {
+                alert('No hash found in URL. Try adding #<img src=x onerror=alert(1)> to the URL.');
+            }
+        }
+
+        // Auto-inject from hash on page load
+        window.addEventListener('load', function() {
+            var hash = decodeURIComponent(location.hash.substring(1));
+            if (hash) {
+                document.getElementById('vuln-input').value = hash;
+                document.getElementById('safe-input').value = hash;
+                setTimeout(function() {
+                    injectVulnerable();
+                    injectSecure();
+                }, 500);
+            }
+        });
+    </script>
+
+</body>
+</html>

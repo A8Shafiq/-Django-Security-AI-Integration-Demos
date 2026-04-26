@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vulnerable File Upload</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #0f0f1a; color: #e0e0e0;
+            min-height: 100vh; padding: 40px 20px;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        .back-link {
+            display: inline-flex; align-items: center; gap: 6px;
+            color: #888; text-decoration: none; font-size: 14px;
+            margin-bottom: 30px; transition: color .2s;
+        }
+        .back-link:hover { color: #e74c3c; }
+
+        h1 { font-size: 30px; color: #fff; margin-bottom: 8px; }
+        .badge-vuln {
+            display: inline-block; background: #e74c3c; color: #fff;
+            font-size: 11px; padding: 3px 10px; border-radius: 4px;
+            font-weight: 700; margin-bottom: 20px; letter-spacing: .5px;
+        }
+        .intro { color: #aaa; font-size: 14px; line-height: 1.7; margin-bottom: 30px; max-width: 700px; }
+
+        /* Warning banner */
+        .warning-banner {
+            background: rgba(231,76,60,.1); border: 1px solid rgba(231,76,60,.3);
+            border-radius: 10px; padding: 20px 24px; margin-bottom: 30px;
+        }
+        .warning-banner h3 { color: #e74c3c; font-size: 15px; margin-bottom: 8px; }
+        .warning-banner ul { list-style: none; padding: 0; }
+        .warning-banner li {
+            color: #ccc; font-size: 13px; padding: 4px 0 4px 20px;
+            position: relative;
+        }
+        .warning-banner li::before {
+            content: "✗"; position: absolute; left: 0;
+            color: #e74c3c; font-weight: bold;
+        }
+
+        /* Upload form */
+        .upload-form {
+            background: #1a1a2e; border: 1px solid #333; border-radius: 12px;
+            padding: 30px; margin-bottom: 30px;
+        }
+        .upload-form label {
+            display: block; color: #fff; font-size: 15px;
+            font-weight: 600; margin-bottom: 12px;
+        }
+        .file-input-wrapper {
+            display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+        }
+        input[type="file"] {
+            background: #2a2a3e; color: #e0e0e0; border: 1px solid #444;
+            border-radius: 6px; padding: 10px 14px; font-size: 14px;
+            flex-grow: 1;
+        }
+        .btn-upload {
+            background: #e74c3c; color: #fff; border: none;
+            border-radius: 6px; padding: 12px 28px; font-size: 14px;
+            font-weight: 700; cursor: pointer; transition: background .2s;
+        }
+        .btn-upload:hover { background: #c0392b; }
+
+        /* Result panel */
+        .result-panel {
+            background: #1a1a2e; border: 1px solid #333; border-radius: 12px;
+            padding: 28px; margin-bottom: 24px;
+        }
+        .result-panel h2 { color: #fff; font-size: 20px; margin-bottom: 16px; }
+        .result-table { width: 100%; border-collapse: collapse; }
+        .result-table td {
+            padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #2a2a3e;
+        }
+        .result-table td:first-child { color: #888; width: 140px; font-weight: 600; }
+        .result-table td:last-child { color: #e0e0e0; word-break: break-all; }
+
+        /* Danger cards */
+        .dangers-section { margin-top: 24px; }
+        .dangers-section h3 { color: #e74c3c; font-size: 17px; margin-bottom: 14px; }
+        .danger-card {
+            background: rgba(231,76,60,.08); border: 1px solid rgba(231,76,60,.25);
+            border-radius: 8px; padding: 18px 20px; margin-bottom: 12px;
+        }
+        .danger-card h4 { color: #e74c3c; font-size: 14px; margin-bottom: 6px; }
+        .danger-card p { color: #bbb; font-size: 13px; line-height: 1.6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'upload_demo:dashboard' %}" class="back-link">← Back to File Upload Lab</a>
+
+        <h1>💀 Vulnerable File Upload</h1>
+        <span class="badge-vuln">⚠ INTENTIONALLY VULNERABLE</span>
+        <p class="intro">
+            This upload endpoint performs <strong>zero validation</strong>. Any file type,
+            any size, any filename is accepted and stored on the server exactly as-is.
+            Upload a file below and see how the server processes it — and what an attacker
+            could do with this weakness.
+        </p>
+
+        <div class="warning-banner">
+            <h3>What's Missing (Why This Is Dangerous)</h3>
+            <ul>
+                <li>No file extension check — <code>.php</code>, <code>.exe</code>, <code>.sh</code> all accepted</li>
+                <li>No MIME-type validation — Content-Type header is ignored entirely</li>
+                <li>No file size limit — attacker can upload gigabytes of data</li>
+                <li>Original filename preserved — enables path traversal attacks</li>
+                <li>No content inspection — magic bytes, embedded scripts not checked</li>
+            </ul>
+        </div>
+
+        <div class="upload-form">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <label for="file">Choose any file to upload:</label>
+                <div class="file-input-wrapper">
+                    <input type="file" name="file" id="file" required>
+                    <button type="submit" class="btn-upload">Upload (No Validation)</button>
+                </div>
+            </form>
+        </div>
+
+        {% if result %}
+        <div class="result-panel">
+            <h2>📋 Upload Result</h2>
+            <table class="result-table">
+                <tr><td>Filename</td><td>{{ result.filename }}</td></tr>
+                <tr><td>Extension</td><td>{{ result.extension }}</td></tr>
+                <tr><td>MIME Type</td><td>{{ result.content_type }}</td></tr>
+                <tr><td>File Size</td><td>{{ result.size_human }} ({{ result.size }} bytes)</td></tr>
+                <tr><td>Saved To</td><td>{{ result.saved_path }}</td></tr>
+                <tr><td>Status</td><td style="color:#e74c3c; font-weight:700;">✓ ACCEPTED — No validation performed</td></tr>
+            </table>
+
+            {% if result.dangers %}
+            <div class="dangers-section">
+                <h3>🚨 Detected Risk Scenarios for This File</h3>
+
+                {% for danger in result.dangers %}
+                    {% if danger == "web_shell_php" %}
+                    <div class="danger-card">
+                        <h4>🐚 PHP Web Shell</h4>
+                        <p>This <code>.php</code> file could contain server-side code. If the web server processes PHP, visiting this file's URL would execute the code — giving the attacker remote shell access. Example: <code>&lt;?php system($_GET['cmd']); ?&gt;</code></p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "web_shell_python" %}
+                    <div class="danger-card">
+                        <h4>🐍 Python Web Shell</h4>
+                        <p>This Python file could be executed by WSGI servers or cron jobs. Attackers can import <code>os</code> or <code>subprocess</code> to run arbitrary commands on the server.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "web_shell_java" %}
+                    <div class="danger-card">
+                        <h4>☕ Java Web Shell (JSP)</h4>
+                        <p>JSP files are compiled and executed by Java application servers (Tomcat, JBoss). Attackers can use <code>Runtime.exec()</code> to run system commands.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "executable" %}
+                    <div class="danger-card">
+                        <h4>⚙️ Executable File</h4>
+                        <p>Binary executables (<code>.exe</code>, <code>.bat</code>, <code>.ps1</code>, <code>.sh</code>) can be downloaded by other users and executed on their machines — spreading malware or ransomware.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "stored_xss" %}
+                    <div class="danger-card">
+                        <h4>⚡ Stored XSS via HTML/SVG</h4>
+                        <p>HTML and SVG files can contain embedded JavaScript. When another user opens the file URL in their browser, the script executes in their session — stealing cookies, redirecting to phishing pages, or defacing the site.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "path_traversal" %}
+                    <div class="danger-card">
+                        <h4>📂 Path Traversal</h4>
+                        <p>The filename contains <code>../</code> sequences or path separators. The server saved this file using the raw filename, meaning it could have been written outside the uploads directory — potentially overwriting config files or system binaries.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "double_extension" %}
+                    <div class="danger-card">
+                        <h4>🎭 Double Extension</h4>
+                        <p>The filename has multiple extensions (e.g., <code>file.php.jpg</code>). Some servers process the first extension, not the last — so this file might be executed as code despite appearing to be an image.</p>
+                    </div>
+                    {% endif %}
+
+                    {% if danger == "dos" %}
+                    <div class="danger-card">
+                        <h4>💣 Denial of Service (Oversized File)</h4>
+                        <p>This file exceeds 2 MB. Without size limits, an attacker could upload massive files to fill the disk, crash the server, or exhaust bandwidth — making the application unavailable to legitimate users.</p>
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div style="margin-top:20px; padding:16px; background:rgba(46,204,113,.08); border:1px solid rgba(46,204,113,.25); border-radius:8px;">
+                <p style="color:#2ecc71; font-size:13px;">
+                    ℹ️ No obvious exploit detected for this particular file — but the <strong>lack of any validation</strong>
+                    means an attacker can upload anything they want. The danger is the <em>policy</em>, not any single file.
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
